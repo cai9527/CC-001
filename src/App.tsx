@@ -5,6 +5,7 @@ import LoginPage from '@/pages/Login';
 import DashboardPage from '@/pages/Dashboard';
 import VehiclesPage from '@/pages/Vehicles';
 import TasksPage from '@/pages/Tasks';
+import TrackingPage from '@/pages/Tracking';
 import DriversPage from '@/pages/Drivers';
 import StatisticsPage from '@/pages/Statistics';
 import SafetyPage from '@/pages/Safety';
@@ -46,15 +47,7 @@ export default function App() {
               </div>
             }
           />
-          <Route
-            path="tasks/tracking"
-            element={
-              <div className="card p-8 text-center">
-                <h2 className="text-xl font-semibold text-neutral-800 mb-2">实时跟踪</h2>
-                <p className="text-neutral-500">功能开发中...</p>
-              </div>
-            }
-          />
+          <Route path="tasks/tracking" element={<TrackingPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
