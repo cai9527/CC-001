@@ -33,6 +33,7 @@ import { useSafetyStore } from '@/store/useSafetyStore';
 import { useDriverStore } from '@/store/useDriverStore';
 import StatCard from '@/components/Charts/StatCard';
 import StatusBadge from '@/components/UI/StatusBadge';
+import VehicleMap from '@/components/Map/VehicleMap';
 import { VEHICLE_STATUS, TASK_STATUS } from '@/types';
 import { formatWeight, formatNumber, formatDateTime, classNames } from '@/utils';
 import { useNavigate } from 'react-router-dom';
@@ -141,6 +142,8 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          <VehicleMap vehicles={vehicles} />
+
           <div className="card p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-semibold text-neutral-800 flex items-center gap-2">
