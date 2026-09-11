@@ -1,17 +1,25 @@
 import { useState } from 'react';
 import { Bell, Search, User, LogOut, Settings, Menu } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSafetyStore } from '@/store/useSafetyStore';
 import { formatDateTime, classNames } from '@/utils';
+import { ALERT_TYPE } from '@/types';
 import { ROLES } from '@/types';
 
 export default function Header() {
+  const navigate = useNavigate();
   const { currentUser, logout } = useAuthStore();
   const { alerts } = useSafetyStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
   const pendingAlerts = alerts.filter((a) => a.status === 'pending');
+
+  const goToWarnings = () => {
+    setShowNotifications(false);
+    navigate('/warnings');
+  };
 
   return (
     <header className="h-16 bg-white border-b border-neutral-200 flex items-center justify-between px-6 sticky top-0 z-30">
@@ -53,29 +61,45 @@ export default function Header() {
                 <span className="text-xs text-neutral-500">{pendingAlerts.length} 条待处理</span>
               </div>
               <div className="max-h-80 overflow-y-auto">
-                {pendingAlerts.slice(0, 5).map((alert) => (
-                  <div
-                    key={alert.id}
-                    className="px-4 py-3 border-b border-neutral-100 hover:bg-neutral-50 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={classNames(
-                          'w-2 h-2 rounded-full mt-2 flex-shrink-0',
-                          alert.level === 'critical' || alert.level === 'high'
-                            ? 'bg-danger-500'
-                            : 'bg-warning-500'
-                        )}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-neutral-800 truncate">{alert.description}</p>
-                        <p className="text-xs text-neutral-500 mt-1">
-                          {formatDateTime(alert.timestamp)}
-                        </p>
+                {pendingAlerts
+                  .slice()
+                  .sort(
+                    (a, b) =>
+                      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                  )
+                  .slice(0, 5)
+                  .map((alert) => (
+                    <div
+                      key={alert.id}
+                      onClick={goToWarnings}
+                      className="px-4 py-3 border-b border-neutral-100 hover:bg-neutral-50 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={classNames(
+                            'w-2 h-2 rounded-full mt-2 flex-shrink-0',
+                            alert.level === 'critical' || alert.level === 'high'
+                              ? 'bg-danger-500'
+                              : 'bg-warning-500'
+                          )}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-xs font-medium text-primary-600">
+                              {ALERT_TYPE[alert.type]?.label || '预警'}
+                            </span>
+                            <span className="text-xs text-neutral-400">
+                              {alert.vehiclePlate}
+                            </span>
+                          </div>
+                          <p className="text-sm text-neutral-800 truncate">{alert.description}</p>
+                          <p className="text-xs text-neutral-500 mt-1">
+                            {formatDateTime(alert.timestamp)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
                 {pendingAlerts.length === 0 && (
                   <div className="px-4 py-8 text-center text-neutral-500 text-sm">
                     暂无待处理预警
@@ -83,7 +107,10 @@ export default function Header() {
                 )}
               </div>
               <div className="px-4 py-3 bg-neutral-50 border-t border-neutral-200">
-                <button className="w-full text-sm text-primary-600 hover:text-primary-700 font-medium">
+                <button
+                  onClick={goToWarnings}
+                  className="w-full text-sm text-primary-600 hover:text-primary-700 font-medium"
+                >
                   查看全部预警
                 </button>
               </div>

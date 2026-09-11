@@ -33,8 +33,12 @@ import { useSafetyStore } from '@/store/useSafetyStore';
 import { useDriverStore } from '@/store/useDriverStore';
 import StatCard from '@/components/Charts/StatCard';
 import StatusBadge from '@/components/UI/StatusBadge';
+<<<<<<< HEAD
 import VehicleMap from '@/components/Map/VehicleMap';
 import { VEHICLE_STATUS, TASK_STATUS } from '@/types';
+=======
+import { VEHICLE_STATUS, TASK_STATUS, ALERT_TYPE } from '@/types';
+>>>>>>> b8a6045 (预警模块)
 import { formatWeight, formatNumber, formatDateTime, classNames } from '@/utils';
 import { useNavigate } from 'react-router-dom';
 
@@ -58,6 +62,8 @@ export default function DashboardPage() {
     (t) => t.status === 'pending' || t.status === 'in_progress'
   ).length;
   const pendingAlerts = alerts.filter((a) => a.status === 'pending').length;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayAlertCount = alerts.filter((a) => a.timestamp.startsWith(todayStr)).length;
 
   const activeVehiclesList = vehicles
     .filter((v) => v.status === 'active')
@@ -70,7 +76,7 @@ export default function DashboardPage() {
     { label: '新增车辆', icon: Truck, path: '/vehicles', color: 'primary' as const },
     { label: '新增任务', icon: ClipboardList, path: '/tasks', color: 'success' as const },
     { label: '新增驾驶员', icon: Users, path: '/drivers', color: 'warning' as const },
-    { label: '查看预警', icon: ShieldAlert, path: '/safety', color: 'danger' as const },
+    { label: '查看预警', icon: ShieldAlert, path: '/warnings', color: 'danger' as const },
   ];
 
   return (
@@ -136,7 +142,7 @@ export default function DashboardPage() {
           icon={<ShieldAlert className="w-6 h-6" />}
           trend={{ value: 15.3, direction: 'down' }}
           color="danger"
-          onClick={() => navigate('/safety')}
+          onClick={() => navigate('/warnings')}
         />
       </div>
 
@@ -444,7 +450,10 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-danger-50 rounded-lg">
+              <div
+                onClick={() => navigate('/warnings')}
+                className="flex items-center justify-between p-3 bg-danger-50 rounded-lg cursor-pointer hover:bg-danger-100 transition-colors"
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-danger-100 flex items-center justify-center">
                     <AlertTriangle className="w-5 h-5 text-danger-600" />
@@ -452,13 +461,13 @@ export default function DashboardPage() {
                   <div>
                     <p className="text-sm text-neutral-600">今日安全预警</p>
                     <p className="text-xl font-bold text-danger-600">
-                      {dashboardData.todayAlerts}
+                      {todayAlertCount}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 text-danger-600">
-                  <TrendingUp className="w-4 h-4" />
-                  <span className="text-sm font-medium">3.1%</span>
+                  <ShieldAlert className="w-4 h-4" />
+                  <span className="text-xs font-medium">待处理 {pendingAlerts}</span>
                 </div>
               </div>
             </div>
@@ -471,7 +480,7 @@ export default function DashboardPage() {
                 待处理预警
               </h3>
               <button
-                onClick={() => navigate('/safety')}
+                onClick={() => navigate('/warnings')}
                 className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
               >
                 查看全部 <ChevronRight className="w-4 h-4" />
@@ -482,7 +491,7 @@ export default function DashboardPage() {
                 <div
                   key={alert.id}
                   className="p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer"
-                  onClick={() => navigate('/safety')}
+                  onClick={() => navigate('/warnings')}
                 >
                   <div className="flex items-start gap-3">
                     <div
@@ -495,10 +504,14 @@ export default function DashboardPage() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <StatusBadge variant={alert.type === 'speeding' ? 'danger' : 'warning'}>
-                          {alert.type === 'speeding' && '超速'}
-                          {alert.type === 'fatigue' && '疲劳'}
-                          {alert.type === 'violation' && '违规'}
+                        <StatusBadge
+                          variant={
+                            alert.level === 'critical' || alert.level === 'high'
+                              ? 'danger'
+                              : 'warning'
+                          }
+                        >
+                          {ALERT_TYPE[alert.type]?.label || '预警'}
                         </StatusBadge>
                         <span className="text-xs text-neutral-500">
                           {alert.vehiclePlate}

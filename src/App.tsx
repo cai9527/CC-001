@@ -9,6 +9,7 @@ import TrackingPage from '@/pages/Tracking';
 import DriversPage from '@/pages/Drivers';
 import StatisticsPage from '@/pages/Statistics';
 import SafetyPage from '@/pages/Safety';
+import WarningPage from '@/pages/Warning';
 import UsersPage from '@/pages/System/users';
 import BackupPage from '@/pages/System/backup';
 
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="drivers" element={<DriversPage />} />
           <Route path="statistics" element={<StatisticsPage />} />
           <Route path="safety" element={<SafetyPage />} />
+          <Route path="warnings" element={<WarningPage />} />
           <Route path="system/users" element={<UsersPage />} />
           <Route path="system/backup" element={<BackupPage />} />
           <Route
