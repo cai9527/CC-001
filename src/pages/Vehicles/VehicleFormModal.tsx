@@ -31,6 +31,9 @@ interface FormState {
   inspectionExpiry: string;
   environmentalExpiry: string;
   driverId: string;
+  gpsLat: string;
+  gpsLng: string;
+  gpsAddress: string;
 }
 
 const emptyForm: FormState = {
@@ -50,6 +53,9 @@ const emptyForm: FormState = {
   inspectionExpiry: '',
   environmentalExpiry: '',
   driverId: '',
+  gpsLat: '',
+  gpsLng: '',
+  gpsAddress: '',
 };
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
@@ -83,6 +89,9 @@ export default function VehicleFormModal({ open, onClose, vehicle }: VehicleForm
         inspectionExpiry: vehicle.inspectionExpiry,
         environmentalExpiry: vehicle.environmentalExpiry,
         driverId: vehicle.driverId || '',
+        gpsLat: vehicle.currentLocation ? String(vehicle.currentLocation.lat) : '',
+        gpsLng: vehicle.currentLocation ? String(vehicle.currentLocation.lng) : '',
+        gpsAddress: vehicle.currentLocation?.address || '',
       });
     } else {
       setForm(emptyForm);
@@ -144,6 +153,19 @@ export default function VehicleFormModal({ open, onClose, vehicle }: VehicleForm
     if (!form.operationLicenseExpiry) errs.operationLicenseExpiry = '请选择营运证到期日期';
     if (!form.inspectionExpiry) errs.inspectionExpiry = '请选择年检到期日期';
 
+    const lat = form.gpsLat.trim();
+    const lng = form.gpsLng.trim();
+    if (lat || lng) {
+      const latNum = Number(lat);
+      const lngNum = Number(lng);
+      if (!lat || isNaN(latNum) || latNum < -90 || latNum > 90) {
+        errs.gpsLat = '纬度需为 -90 到 90 之间的数字';
+      }
+      if (!lng || isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+        errs.gpsLng = '经度需为 -180 到 180 之间的数字';
+      }
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -174,6 +196,14 @@ export default function VehicleFormModal({ open, onClose, vehicle }: VehicleForm
         environmentalExpiry: form.environmentalExpiry,
         driverId: form.driverId || undefined,
         driverName: driver?.name,
+        currentLocation:
+          form.gpsLat.trim() && form.gpsLng.trim()
+            ? {
+                lat: Number(form.gpsLat.trim()),
+                lng: Number(form.gpsLng.trim()),
+                address: form.gpsAddress.trim() || undefined,
+              }
+            : undefined,
       };
       if (isEdit) {
         await updateVehicle(vehicle.id, payload);
@@ -190,7 +220,15 @@ export default function VehicleFormModal({ open, onClose, vehicle }: VehicleForm
     }
   };
 
-  const driverOptions = drivers.map((d) => ({ value: d.id, label: `${d.name}（${d.phone}）` }));
+  // 已绑定其他车辆的驾驶员不可再选择（编辑时保留当前车辆已绑定的驾驶员）
+  const boundDriverIds = new Set(
+    vehicles
+      .filter((v) => v.id !== vehicle?.id && v.driverId)
+      .map((v) => v.driverId as string)
+  );
+  const driverOptions = drivers
+    .filter((d) => !boundDriverIds.has(d.id))
+    .map((d) => ({ value: d.id, label: `${d.name}（${d.phone}）` }));
 
   return (
     <Modal
@@ -367,6 +405,39 @@ export default function VehicleFormModal({ open, onClose, vehicle }: VehicleForm
                 type="date"
                 value={form.environmentalExpiry}
                 onChange={set('environmentalExpiry')}
+              />
+            </FormField>
+          </div>
+        </div>
+
+        <div>
+          <h4 className="text-sm font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+            <div className="w-1 h-4 bg-primary-500 rounded-full" />
+            GPS 位置
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField label="纬度" error={errors.gpsLat} hint="范围 -90 ~ 90，如 39.9042">
+              <FormInput
+                value={form.gpsLat}
+                onChange={set('gpsLat')}
+                placeholder="如：39.9042"
+                error={!!errors.gpsLat}
+              />
+            </FormField>
+            <FormField label="经度" error={errors.gpsLng} hint="范围 -180 ~ 180，如 116.4074">
+              <FormInput
+                value={form.gpsLng}
+                onChange={set('gpsLng')}
+                placeholder="如：116.4074"
+                error={!!errors.gpsLng}
+              />
+            </FormField>
+            <FormField label="所在位置">
+              <FormInput
+                value={form.gpsAddress}
+                onChange={set('gpsAddress')}
+                placeholder="如：北京市朝阳区"
+                maxLength={50}
               />
             </FormField>
           </div>

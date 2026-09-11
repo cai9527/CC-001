@@ -216,7 +216,10 @@ export default function VehiclesPage() {
             <Filter className="w-4 h-4 text-neutral-500" />
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
               className="px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-white"
             >
               <option value="all">全部状态</option>
@@ -229,7 +232,21 @@ export default function VehiclesPage() {
           </div>
           <div className="flex items-center gap-2">
             {Object.entries(VEHICLE_STATUS).map(([key, val]) => (
-              <div key={key} className="flex items-center gap-1 text-sm">
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  setStatusFilter(statusFilter === key ? 'all' : key);
+                  setPage(1);
+                }}
+                className={classNames(
+                  'flex items-center gap-1 text-sm px-2 py-1 rounded-md border transition-colors',
+                  statusFilter === key
+                    ? 'border-primary-400 bg-primary-50 text-primary-700'
+                    : 'border-transparent hover:bg-neutral-100'
+                )}
+                title={statusFilter === key ? '点击取消筛选' : `点击筛选：${val.label}`}
+              >
                 <span
                   className={classNames(
                     'w-2.5 h-2.5 rounded-full',
@@ -244,7 +261,7 @@ export default function VehiclesPage() {
                 <span className="text-neutral-500 font-medium">
                   ({vehicles.filter((v) => v.status === key).length})
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -312,6 +329,18 @@ export default function VehiclesPage() {
                   <div>
                     <span className="text-neutral-500">当前状态：</span>
                     {getStatusBadge(selectedVehicle.status)}
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-neutral-500">GPS 位置：</span>
+                    <span className="font-medium text-neutral-800">
+                      {selectedVehicle.currentLocation
+                        ? `${selectedVehicle.currentLocation.lat}, ${selectedVehicle.currentLocation.lng}${
+                            selectedVehicle.currentLocation.address
+                              ? `（${selectedVehicle.currentLocation.address}）`
+                              : ''
+                          }`
+                        : '未录入'}
+                    </span>
                   </div>
                 </div>
               </div>

@@ -3,7 +3,7 @@ import { classNames } from '@/utils';
 
 interface Column<T> {
   key: keyof T | string;
-  title: string;
+  title: React.ReactNode;
   width?: string;
   render?: (row: T) => React.ReactNode;
   sortable?: boolean;

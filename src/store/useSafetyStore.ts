@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import type { SafetyAlert, Driver } from '@/types';
 import { mockSafetyAlerts, mockDrivers } from '@/services/mock/data';
+import { useAuthStore } from '@/store/useAuthStore';
+
+interface ProcessAlertData {
+  remark?: string;
+  handleResult?: SafetyAlert['handleResult'];
+  handleMeasure?: string;
+  processedBy?: string;
+}
 
 interface SafetyState {
   alerts: SafetyAlert[];
@@ -14,7 +22,8 @@ interface SafetyState {
   };
   getAlerts: () => Promise<SafetyAlert[]>;
   getAlertById: (id: string) => SafetyAlert | undefined;
-  processAlert: (id: string, status: 'processed' | 'ignored', remark?: string) => Promise<SafetyAlert>;
+  processAlert: (id: string, status: 'processed' | 'ignored', remark?: string, extra?: ProcessAlertData) => Promise<SafetyAlert>;
+  batchProcessAlerts: (ids: string[], status: 'processed' | 'ignored', data?: ProcessAlertData) => Promise<number>;
   addAlert: (alert: Omit<SafetyAlert, 'id' | 'status'>) => Promise<SafetyAlert>;
   getDrivers: () => Promise<Driver[]>;
   setFilters: (filters: Partial<SafetyState['filters']>) => void;
@@ -45,22 +54,50 @@ export const useSafetyStore = create<SafetyState>((set, get) => ({
     return get().alerts.find((a) => a.id === id);
   },
 
-  processAlert: async (id, status, remark) => {
+  processAlert: async (id, status, remark, extra) => {
     await new Promise((resolve) => setTimeout(resolve, 300));
+    const operator =
+      extra?.processedBy || useAuthStore.getState().currentUser?.name || '系统管理员';
     set((state) => ({
       alerts: state.alerts.map((a) =>
         a.id === id
           ? {
               ...a,
               status,
-              remark,
-              processedBy: 'admin',
+              remark: remark ?? extra?.remark,
+              handleResult: extra?.handleResult,
+              handleMeasure: extra?.handleMeasure,
+              processedBy: operator,
               processedAt: new Date().toISOString(),
             }
           : a
       ),
     }));
     return get().alerts.find((a) => a.id === id)!;
+  },
+
+  batchProcessAlerts: async (ids, status, data) => {
+    if (ids.length === 0) return 0;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const operator = data?.processedBy || useAuthStore.getState().currentUser?.name || '系统管理员';
+    const processedAt = new Date().toISOString();
+    const idSet = new Set(ids);
+    set((state) => ({
+      alerts: state.alerts.map((a) =>
+        idSet.has(a.id) && a.status === 'pending'
+          ? {
+              ...a,
+              status,
+              remark: data?.remark,
+              handleResult: data?.handleResult,
+              handleMeasure: data?.handleMeasure,
+              processedBy: operator,
+              processedAt,
+            }
+          : a
+      ),
+    }));
+    return ids.length;
   },
 
   addAlert: async (alertData) => {
@@ -117,7 +154,7 @@ export const useSafetyStore = create<SafetyState>((set, get) => ({
       processed: 0,
       ignored: 0,
       byLevel: { low: 0, medium: 0, high: 0, critical: 0 } as Record<string, number>,
-      byType: { speeding: 0, fatigue: 0, violation: 0, overload: 0 } as Record<string, number>,
+      byType: { speeding: 0, fatigue: 0, violation: 0, overload: 0, route_deviation: 0, device: 0 } as Record<string, number>,
     };
 
     alerts.forEach((a) => {

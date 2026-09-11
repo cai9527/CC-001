@@ -142,10 +142,12 @@ export interface TransportRecord {
 
 export interface SafetyAlert {
   id: string;
+  warningNo?: string;
   vehicleId: string;
   driverId: string;
-  type: 'speeding' | 'fatigue' | 'violation' | 'overload';
+  type: 'speeding' | 'fatigue' | 'violation' | 'overload' | 'route_deviation' | 'device';
   level: 'low' | 'medium' | 'high' | 'critical';
+  source: 'gps' | 'video' | 'sensor' | 'manual';
   description: string;
   location?: Location;
   speed?: number;
@@ -158,6 +160,8 @@ export interface SafetyAlert {
   processedBy?: string;
   processedAt?: string;
   remark?: string;
+  handleResult?: 'verified' | 'false_alarm' | 'educated' | 'penalized';
+  handleMeasure?: string;
   vehiclePlate?: string;
   driverName?: string;
   duration?: string;
@@ -330,12 +334,28 @@ export const ALERT_TYPE: Record<SafetyAlert['type'], { label: string; icon: stri
   fatigue: { label: '疲劳驾驶', icon: 'Clock', color: '#F59E0B' },
   violation: { label: '违规行为', icon: 'AlertTriangle', color: '#EF4444' },
   overload: { label: '超载', icon: 'Weight', color: '#F59E0B' },
+  route_deviation: { label: '路线偏移', icon: 'Route', color: '#8B5CF6' },
+  device: { label: '设备异常', icon: 'Radio', color: '#165DFF' },
 };
 
 export const ALERT_STATUS: Record<SafetyAlert['status'], { label: string; class: string; color: string }> = {
   pending: { label: '待处理', class: 'badge-warning', color: '#F59E0B' },
   processed: { label: '已处理', class: 'badge-success', color: '#10B981' },
   ignored: { label: '已忽略', class: 'badge-neutral', color: '#6B7280' },
+};
+
+export const ALERT_SOURCE: Record<SafetyAlert['source'], { label: string; color: string }> = {
+  gps: { label: 'GPS定位', color: '#165DFF' },
+  video: { label: '视频监控', color: '#8B5CF6' },
+  sensor: { label: '载重传感器', color: '#F59E0B' },
+  manual: { label: '人工上报', color: '#6B7280' },
+};
+
+export const ALERT_HANDLE_RESULT: Record<NonNullable<SafetyAlert['handleResult']>, { label: string; color: string }> = {
+  verified: { label: '情况属实', color: 'danger' },
+  false_alarm: { label: '误报', color: 'neutral' },
+  educated: { label: '教育提醒', color: 'warning' },
+  penalized: { label: '处罚整改', color: 'danger' },
 };
 
 export const DOCUMENT_STATUS: Record<VehicleDocument['status'], { label: string; class: string; color: string }> = {

@@ -6,6 +6,7 @@ import {
   Users,
   BarChart3,
   ShieldAlert,
+  Siren,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -13,45 +14,56 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { classNames } from '@/utils';
+import { useSafetyStore } from '@/store/useSafetyStore';
 
 interface MenuItem {
   path: string;
   label: string;
   icon: React.ElementType;
   children?: MenuItem[];
+  badge?: number;
 }
-
-const menuItems: MenuItem[] = [
-  { path: '/', label: '仪表盘', icon: LayoutDashboard },
-  { path: '/vehicles', label: '车辆管理', icon: Truck },
-  {
-    path: '/tasks',
-    label: '任务调度',
-    icon: ClipboardList,
-    children: [
-      { path: '/tasks', label: '任务列表', icon: ClipboardList },
-      { path: '/tasks/tracking', label: '实时跟踪', icon: MapPin },
-    ],
-  },
-  { path: '/drivers', label: '驾驶员管理', icon: Users },
-  { path: '/statistics', label: '运输统计', icon: BarChart3 },
-  { path: '/safety', label: '安全监控', icon: ShieldAlert },
-  {
-    path: '/system',
-    label: '系统管理',
-    icon: Settings,
-    children: [
-      { path: '/system/users', label: '用户管理', icon: Users },
-      { path: '/system/permissions', label: '权限配置', icon: Settings },
-      { path: '/system/backup', label: '数据备份', icon: Settings },
-    ],
-  },
-];
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['/tasks', '/system']);
   const location = useLocation();
+  const pendingAlertCount = useSafetyStore(
+    (s) => s.alerts.filter((a) => a.status === 'pending').length
+  );
+
+  const menuItems: MenuItem[] = [
+    { path: '/', label: '仪表盘', icon: LayoutDashboard },
+    { path: '/vehicles', label: '车辆管理', icon: Truck },
+    {
+      path: '/tasks',
+      label: '任务调度',
+      icon: ClipboardList,
+      children: [
+        { path: '/tasks', label: '任务列表', icon: ClipboardList },
+        { path: '/tasks/tracking', label: '实时跟踪', icon: MapPin },
+      ],
+    },
+    { path: '/drivers', label: '驾驶员管理', icon: Users },
+    { path: '/statistics', label: '运输统计', icon: BarChart3 },
+    { path: '/safety', label: '安全监控', icon: ShieldAlert },
+    {
+      path: '/warnings',
+      label: '预警管理',
+      icon: Siren,
+      badge: pendingAlertCount,
+    },
+    {
+      path: '/system',
+      label: '系统管理',
+      icon: Settings,
+      children: [
+        { path: '/system/users', label: '用户管理', icon: Users },
+        { path: '/system/permissions', label: '权限配置', icon: Settings },
+        { path: '/system/backup', label: '数据备份', icon: Settings },
+      ],
+    },
+  ];
 
   const toggleMenu = (path: string) => {
     setExpandedMenus((prev) =>
@@ -100,14 +112,28 @@ export default function Sidebar() {
             to={item.path}
             className={({ isActive }) =>
               classNames(
-                'sidebar-item',
+                'sidebar-item relative',
                 isActive ? 'sidebar-item-active' : 'sidebar-item-inactive',
                 level > 0 && 'pl-11'
               )
             }
           >
             <Icon className="w-5 h-5 flex-shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
+            {!collapsed && (
+              <>
+                <span className="flex-1">{item.label}</span>
+                {!!item.badge && item.badge > 0 && (
+                  <span className="min-w-5 h-5 px-1.5 bg-danger-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {item.badge > 99 ? '99+' : item.badge}
+                  </span>
+                )}
+              </>
+            )}
+            {collapsed && !!item.badge && item.badge > 0 && (
+              <span className="absolute top-1.5 right-1.5 min-w-4 h-4 px-1 bg-danger-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                {item.badge > 99 ? '99+' : item.badge}
+              </span>
+            )}
           </NavLink>
         )}
         {hasChildren && isExpanded && !collapsed && (
