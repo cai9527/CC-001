@@ -170,7 +170,6 @@ export interface User {
   name: string;
   phone: string;
   email?: string;
-  accountType: AccountType;
   role: Role;
   department?: string;
   status: 'active' | 'inactive';
@@ -179,38 +178,7 @@ export interface User {
   createdAt: string;
 }
 
-/**
- * 账号类型：系统至少支持管理员账号与个人账号两种。
- * - admin：管理员账号，拥有所有模块的全部操作权限
- * - personal：个人账号，仅可访问业务模块，具体操作权限由角色进一步细化
- */
-export type AccountType = 'admin' | 'personal';
-
 export type Role = 'admin' | 'manager' | 'dispatcher' | 'safety_officer' | 'fleet_captain';
-
-/** 模块操作权限 */
-export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'export' | 'process';
-
-/** 系统功能模块标识 */
-export type ModuleKey =
-  | 'dashboard'
-  | 'vehicles'
-  | 'tasks'
-  | 'drivers'
-  | 'statistics'
-  | 'safety'
-  | 'system-users'
-  | 'system-permissions'
-  | 'system-backup';
-
-/** 某个模块上授予的一组操作权限 */
-export interface ModulePermission {
-  module: ModuleKey;
-  actions: PermissionAction[];
-}
-
-/** 账号类型 -> 模块权限 的映射表 */
-export type AccountTypePermissionMap = Record<AccountType, ModulePermission[]>;
 
 export interface Permission {
   id: string;
@@ -374,30 +342,6 @@ export const DOCUMENT_STATUS: Record<VehicleDocument['status'], { label: string;
   valid: { label: '有效', class: 'badge-success', color: '#10B981' },
   expiring: { label: '即将到期', class: 'badge-warning', color: '#F59E0B' },
   expired: { label: '已过期', class: 'badge-danger', color: '#EF4444' },
-};
-
-export const ACCOUNT_TYPES: Record<AccountType, { label: string; description: string; color: string; class: string }> = {
-  admin: {
-    label: '管理员账号',
-    description: '拥有系统全部模块的管理权限，可管理用户、配置权限与备份数据',
-    color: '#165DFF',
-    class: 'badge-primary',
-  },
-  personal: {
-    label: '个人账号',
-    description: '面向业务人员的普通账号，仅可访问业务模块，操作权限由角色决定',
-    color: '#10B981',
-    class: 'badge-success',
-  },
-};
-
-export const PERMISSION_ACTIONS: Record<PermissionAction, { label: string; color: string }> = {
-  view: { label: '查看', color: '#165DFF' },
-  create: { label: '新增', color: '#10B981' },
-  edit: { label: '编辑', color: '#F59E0B' },
-  delete: { label: '删除', color: '#EF4444' },
-  export: { label: '导出', color: '#8B5CF6' },
-  process: { label: '处理', color: '#F97316' },
 };
 
 export const ROLES: Record<Role, { label: string; description: string; color: string; permissions: string[] }> = {

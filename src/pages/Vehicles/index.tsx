@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { Plus, Search, Filter, Edit2, Trash2, Eye, FileText, Wrench } from 'lucide-react';
 import { useVehicleStore } from '@/store/useVehicleStore';
+import { toast } from '@/store/useToastStore';
 import DataTable from '@/components/UI/DataTable';
 import StatusBadge from '@/components/UI/StatusBadge';
 import Modal from '@/components/UI/Modal';
+import VehicleFormModal from './VehicleFormModal';
+import DocumentManageModal from './DocumentManageModal';
+import MaintenanceModal from './MaintenanceModal';
 import { VEHICLE_STATUS, VEHICLE_TYPES } from '@/types';
 import { formatDate, classNames } from '@/utils';
 import type { Vehicle } from '@/types';
@@ -16,6 +20,11 @@ export default function VehiclesPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [documentVehicle, setDocumentVehicle] = useState<Vehicle | null>(null);
+  const [maintenanceVehicle, setMaintenanceVehicle] = useState<Vehicle | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const pageSize = 10;
 
   const filteredVehicles = vehicles.filter((v) => {
@@ -40,11 +49,29 @@ export default function VehiclesPage() {
     setShowDeleteConfirm(true);
   };
 
-  const confirmDelete = () => {
+  const handleAdd = () => {
+    setEditingVehicle(null);
+    setShowFormModal(true);
+  };
+
+  const handleEdit = (vehicle: Vehicle) => {
+    setEditingVehicle(vehicle);
+    setShowFormModal(true);
+  };
+
+  const confirmDelete = async () => {
     if (selectedVehicle) {
-      deleteVehicle(selectedVehicle.id);
-      setShowDeleteConfirm(false);
-      setSelectedVehicle(null);
+      setDeleting(true);
+      try {
+        await deleteVehicle(selectedVehicle.id);
+        toast.success(`车辆 ${selectedVehicle.plateNumber} 已删除`);
+        setShowDeleteConfirm(false);
+        setSelectedVehicle(null);
+      } catch {
+        toast.error('删除车辆失败，请重试');
+      } finally {
+        setDeleting(false);
+      }
     }
   };
 
@@ -128,18 +155,21 @@ export default function VehiclesPage() {
             <Eye className="w-4 h-4" />
           </button>
           <button
+            onClick={() => setDocumentVehicle(row)}
             className="p-1.5 text-primary-600 hover:bg-primary-50 rounded transition-colors"
             title="证件管理"
           >
             <FileText className="w-4 h-4" />
           </button>
           <button
+            onClick={() => setMaintenanceVehicle(row)}
             className="p-1.5 text-warning-600 hover:bg-warning-50 rounded transition-colors"
             title="维护记录"
           >
             <Wrench className="w-4 h-4" />
           </button>
           <button
+            onClick={() => handleEdit(row)}
             className="p-1.5 text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
             title="编辑"
           >
@@ -164,7 +194,7 @@ export default function VehiclesPage() {
           <h1 className="text-2xl font-bold text-neutral-800">车辆管理</h1>
           <p className="text-sm text-neutral-500 mt-1">管理所有运渣车辆的基本信息、证件和维护记录</p>
         </div>
-        <button className="btn btn-primary flex items-center gap-2">
+        <button onClick={handleAdd} className="btn btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" />
           新增车辆
         </button>
@@ -396,11 +426,12 @@ export default function VehiclesPage() {
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="btn btn-default"
+                disabled={deleting}
               >
                 取消
               </button>
-              <button onClick={confirmDelete} className="btn btn-danger">
-                确认删除
+              <button onClick={confirmDelete} className="btn btn-danger" disabled={deleting}>
+                {deleting ? '删除中...' : '确认删除'}
               </button>
             </>
           }
@@ -416,6 +447,24 @@ export default function VehiclesPage() {
           </div>
         </Modal>
       )}
+
+      <VehicleFormModal
+        open={showFormModal}
+        onClose={() => setShowFormModal(false)}
+        vehicle={editingVehicle}
+      />
+
+      <DocumentManageModal
+        open={!!documentVehicle}
+        onClose={() => setDocumentVehicle(null)}
+        vehicle={documentVehicle}
+      />
+
+      <MaintenanceModal
+        open={!!maintenanceVehicle}
+        onClose={() => setMaintenanceVehicle(null)}
+        vehicle={maintenanceVehicle}
+      />
     </div>
   );
 }

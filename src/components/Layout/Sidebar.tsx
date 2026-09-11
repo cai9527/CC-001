@@ -13,44 +13,37 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { classNames } from '@/utils';
-import { useAuthStore } from '@/store/useAuthStore';
-import { usePermissionStore } from '@/store/usePermissionStore';
-import type { ModuleKey } from '@/types';
 
 interface MenuItem {
   path: string;
   label: string;
   icon: React.ElementType;
-  /** 菜单项对应的功能模块，用于按账号类型权限过滤 */
-  module: ModuleKey;
   children?: MenuItem[];
 }
 
 const menuItems: MenuItem[] = [
-  { path: '/', label: '仪表盘', icon: LayoutDashboard, module: 'dashboard' },
-  { path: '/vehicles', label: '车辆管理', icon: Truck, module: 'vehicles' },
+  { path: '/', label: '仪表盘', icon: LayoutDashboard },
+  { path: '/vehicles', label: '车辆管理', icon: Truck },
   {
     path: '/tasks',
     label: '任务调度',
     icon: ClipboardList,
-    module: 'tasks',
     children: [
-      { path: '/tasks', label: '任务列表', icon: ClipboardList, module: 'tasks' },
-      { path: '/tasks/tracking', label: '实时跟踪', icon: MapPin, module: 'tasks' },
+      { path: '/tasks', label: '任务列表', icon: ClipboardList },
+      { path: '/tasks/tracking', label: '实时跟踪', icon: MapPin },
     ],
   },
-  { path: '/drivers', label: '驾驶员管理', icon: Users, module: 'drivers' },
-  { path: '/statistics', label: '运输统计', icon: BarChart3, module: 'statistics' },
-  { path: '/safety', label: '安全监控', icon: ShieldAlert, module: 'safety' },
+  { path: '/drivers', label: '驾驶员管理', icon: Users },
+  { path: '/statistics', label: '运输统计', icon: BarChart3 },
+  { path: '/safety', label: '安全监控', icon: ShieldAlert },
   {
     path: '/system',
     label: '系统管理',
     icon: Settings,
-    module: 'system-users',
     children: [
-      { path: '/system/users', label: '用户管理', icon: Users, module: 'system-users' },
-      { path: '/system/permissions', label: '权限配置', icon: Settings, module: 'system-permissions' },
-      { path: '/system/backup', label: '数据备份', icon: Settings, module: 'system-backup' },
+      { path: '/system/users', label: '用户管理', icon: Users },
+      { path: '/system/permissions', label: '权限配置', icon: Settings },
+      { path: '/system/backup', label: '数据备份', icon: Settings },
     ],
   },
 ];
@@ -59,20 +52,6 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['/tasks', '/system']);
   const location = useLocation();
-  const { hasModuleAccess } = useAuthStore();
-  // 订阅权限映射，保证权限配置修改后菜单实时刷新
-  usePermissionStore((state) => state.permissionMap);
-
-  // 按当前账号的模块权限过滤菜单：无权限的项隐藏，子菜单全部不可见的父菜单一并隐藏
-  const visibleMenus = menuItems
-    .map((item) => {
-      if (!item.children) {
-        return hasModuleAccess(item.module) ? item : null;
-      }
-      const children = item.children.filter((child) => hasModuleAccess(child.module));
-      return children.length > 0 ? { ...item, children } : null;
-    })
-    .filter((item): item is MenuItem => item !== null);
 
   const toggleMenu = (path: string) => {
     setExpandedMenus((prev) =>
@@ -164,7 +143,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {visibleMenus.map((item) => renderMenuItem(item))}
+        {menuItems.map((item) => renderMenuItem(item))}
       </nav>
 
       <div className="p-2 border-t border-neutral-200">

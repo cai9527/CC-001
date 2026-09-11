@@ -1,8 +1,6 @@
 import { create } from 'zustand';
-import type { User, ModuleKey } from '@/types';
+import type { User, Role } from '@/types';
 import { mockUsers } from '@/services/mock/data';
-import { usePermissionStore } from '@/store/usePermissionStore';
-import { getEffectivePermissions } from '@/config/permissions';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -17,13 +15,16 @@ interface AuthState {
   addUser: (user: Omit<User, 'id' | 'createdAt' | 'lastLogin'>) => Promise<User>;
   updateUser: (id: string, data: Partial<User>) => Promise<User>;
   deleteUser: (id: string) => Promise<boolean>;
-  /** 是否拥有某项操作权限（格式 module:action，如 vehicles:edit） */
   hasPermission: (permission: string) => boolean;
-  /** 是否可访问某个功能模块 */
-  hasModuleAccess: (module: ModuleKey) => boolean;
-  /** 当前用户的全部有效权限码 */
-  getPermissions: () => string[];
 }
+
+const rolePermissions: Record<Role, string[]> = {
+  admin: ['*'],
+  manager: ['dashboard:view', 'statistics:view', 'vehicles:view', 'drivers:view', 'tasks:view', 'safety:view'],
+  dispatcher: ['dashboard:view', 'tasks:view', 'tasks:create', 'tasks:edit', 'vehicles:view', 'drivers:view'],
+  safety_officer: ['dashboard:view', 'safety:view', 'safety:process', 'vehicles:view', 'drivers:view'],
+  fleet_captain: ['dashboard:view', 'vehicles:view', 'vehicles:edit', 'drivers:view', 'drivers:edit', 'maintenance:edit'],
+};
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: true,
@@ -89,18 +90,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   hasPermission: (permission: string) => {
-    return get().getPermissions().includes(permission);
-  },
-
-  hasModuleAccess: (module: ModuleKey) => {
-    return get().getPermissions().some((code) => code.startsWith(`${module}:`));
-  },
-
-  getPermissions: () => {
     const { currentUser } = get();
-    if (!currentUser) return [];
-    const { permissionMap } = usePermissionStore.getState();
-    // 账号类型决定模块范围与操作上限，个人账号再由角色权限细化
-    return getEffectivePermissions(permissionMap, currentUser);
+    if (!currentUser) return false;
+    const permissions = rolePermissions[currentUser.role];
+    if (permissions.includes('*')) return true;
+    return permissions.includes(permission);
   },
 }));

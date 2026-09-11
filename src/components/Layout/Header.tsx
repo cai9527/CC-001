@@ -3,7 +3,7 @@ import { Bell, Search, User, LogOut, Settings, Menu } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSafetyStore } from '@/store/useSafetyStore';
 import { formatDateTime, classNames } from '@/utils';
-import { ROLES, ACCOUNT_TYPES } from '@/types';
+import { ROLES } from '@/types';
 
 export default function Header() {
   const { currentUser, logout } = useAuthStore();
@@ -113,8 +113,7 @@ export default function Header() {
             <div className="hidden md:block text-left">
               <p className="text-sm font-medium text-neutral-800">{currentUser?.name}</p>
               <p className="text-xs text-neutral-500">
-                {currentUser?.accountType ? ACCOUNT_TYPES[currentUser.accountType].label : ''}
-                {currentUser?.role ? ` · ${ROLES[currentUser.role].label}` : ''}
+                {currentUser?.role ? ROLES[currentUser.role].label : ''}
               </p>
             </div>
           </button>

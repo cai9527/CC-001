@@ -157,47 +157,37 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="mt-4 space-y-3">
-              <div>
-                <p className="text-xs text-neutral-400 mb-1.5">管理员账号</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => quickLogin('admin')}
-                    className="px-3 py-2 text-xs bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors font-medium"
-                  >
-                    系统管理员
-                  </button>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-neutral-400 mb-1.5">个人账号</p>
-                <div className="grid grid-cols-4 gap-2">
-                  <button
-                    onClick={() => quickLogin('manager')}
-                    className="px-3 py-2 text-xs bg-success-50 text-success-700 rounded-lg hover:bg-success-100 transition-colors font-medium"
-                  >
-                    企业管理
-                  </button>
-                  <button
-                    onClick={() => quickLogin('dispatcher')}
-                    className="px-3 py-2 text-xs bg-warning-50 text-warning-700 rounded-lg hover:bg-warning-100 transition-colors font-medium"
-                  >
-                    调度员
-                  </button>
-                  <button
-                    onClick={() => quickLogin('safety')}
-                    className="px-3 py-2 text-xs bg-danger-50 text-danger-700 rounded-lg hover:bg-danger-100 transition-colors font-medium"
-                  >
-                    安全员
-                  </button>
-                  <button
-                    onClick={() => quickLogin('captain')}
-                    className="px-3 py-2 text-xs bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors font-medium"
-                  >
-                    车队队长
-                  </button>
-                </div>
-              </div>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <button
+                onClick={() => quickLogin('admin')}
+                className="px-3 py-2 text-xs bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors font-medium"
+              >
+                管理员
+              </button>
+              <button
+                onClick={() => quickLogin('manager')}
+                className="px-3 py-2 text-xs bg-success-50 text-success-700 rounded-lg hover:bg-success-100 transition-colors font-medium"
+              >
+                企业管理
+              </button>
+              <button
+                onClick={() => quickLogin('dispatcher')}
+                className="px-3 py-2 text-xs bg-warning-50 text-warning-700 rounded-lg hover:bg-warning-100 transition-colors font-medium"
+              >
+                调度员
+              </button>
+              <button
+                onClick={() => quickLogin('safety')}
+                className="px-3 py-2 text-xs bg-danger-50 text-danger-700 rounded-lg hover:bg-danger-100 transition-colors font-medium"
+              >
+                安全员
+              </button>
+              <button
+                onClick={() => quickLogin('captain')}
+                className="px-3 py-2 text-xs bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors font-medium"
+              >
+                车队队长
+              </button>
             </div>
           </div>
         </div>

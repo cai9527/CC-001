@@ -1,18 +1,17 @@
 import { useState } from 'react';
-import { Plus, Search, Filter, Edit2, Trash2, Eye, User as UserIcon, Shield, ShieldCheck, Lock } from 'lucide-react';
+import { Plus, Search, Filter, Edit2, Trash2, Eye, User as UserIcon, Shield, Lock } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import DataTable from '@/components/UI/DataTable';
 import StatusBadge from '@/components/UI/StatusBadge';
 import Modal from '@/components/UI/Modal';
-import { ROLES, ACCOUNT_TYPES } from '@/types';
-import { formatDate } from '@/utils';
-import type { User, AccountType } from '@/types';
+import { ROLES } from '@/types';
+import { formatDate, classNames } from '@/utils';
+import type { User } from '@/types';
 
 export default function UsersPage() {
   const { users, loading, deleteUser } = useAuthStore();
   const [searchText, setSearchText] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [accountTypeFilter, setAccountTypeFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -25,8 +24,7 @@ export default function UsersPage() {
       u.username.includes(searchText) ||
       u.phone.includes(searchText);
     const matchRole = roleFilter === 'all' || u.role === roleFilter;
-    const matchAccountType = accountTypeFilter === 'all' || u.accountType === accountTypeFilter;
-    return matchSearch && matchRole && matchAccountType;
+    return matchSearch && matchRole;
   });
 
   const pagedUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
@@ -66,20 +64,6 @@ export default function UsersPage() {
     );
   };
 
-  const getAccountTypeBadge = (accountType: AccountType) => {
-    const config = ACCOUNT_TYPES[accountType];
-    const Icon = accountType === 'admin' ? ShieldCheck : UserIcon;
-    return (
-      <span
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium text-white"
-        style={{ backgroundColor: config.color }}
-      >
-        <Icon className="w-3 h-3" />
-        {config.label}
-      </span>
-    );
-  };
-
   const columns = [
     {
       key: 'avatar',
@@ -108,12 +92,6 @@ export default function UsersPage() {
       title: '用户名',
       width: '120px',
       render: (row: User) => <span className="text-neutral-600">{row.username}</span>,
-    },
-    {
-      key: 'accountType',
-      title: '账号类型',
-      width: '120px',
-      render: (row: User) => getAccountTypeBadge(row.accountType),
     },
     {
       key: 'role',
@@ -200,47 +178,21 @@ export default function UsersPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {(Object.entries(ACCOUNT_TYPES) as [AccountType, (typeof ACCOUNT_TYPES)[AccountType]][]).map(
-          ([key, val]) => {
-            const count = users.filter((u) => u.accountType === key).length;
-            const Icon = key === 'admin' ? ShieldCheck : UserIcon;
-            return (
-              <div key={key} className="card p-4 flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: `${val.color}1A` }}
-                >
-                  <Icon className="w-5 h-5" style={{ color: val.color }} />
-                </div>
-                <div>
-                  <div className="text-xl font-bold text-neutral-800">{count}</div>
-                  <div className="text-sm text-neutral-500">{val.label}</div>
-                </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {Object.entries(ROLES).map(([key, val]) => {
+          const count = users.filter((u) => u.role === key).length;
+          return (
+            <div key={key} className="card p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-primary-600" />
               </div>
-            );
-          }
-        )}
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-primary-600" />
-          </div>
-          <div>
-            <div className="text-xl font-bold text-neutral-800">{users.length}</div>
-            <div className="text-sm text-neutral-500">用户总数</div>
-          </div>
-        </div>
-        <div className="card p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-success-100 flex items-center justify-center">
-            <UserIcon className="w-5 h-5 text-success-600" />
-          </div>
-          <div>
-            <div className="text-xl font-bold text-neutral-800">
-              {users.filter((u) => u.status === 'active').length}
+              <div>
+                <div className="text-xl font-bold text-neutral-800">{count}</div>
+                <div className="text-sm text-neutral-500">{val.label}</div>
+              </div>
             </div>
-            <div className="text-sm text-neutral-500">正常用户</div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
       <div className="card p-4">
@@ -257,20 +209,6 @@ export default function UsersPage() {
           </div>
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-neutral-500" />
-            <select
-              value={accountTypeFilter}
-              onChange={(e) => setAccountTypeFilter(e.target.value)}
-              className="px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-white"
-            >
-              <option value="all">全部账号类型</option>
-              {(Object.entries(ACCOUNT_TYPES) as [AccountType, (typeof ACCOUNT_TYPES)[AccountType]][]).map(
-                ([key, val]) => (
-                  <option key={key} value={key}>
-                    {val.label}
-                  </option>
-                )
-              )}
-            </select>
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
@@ -325,7 +263,6 @@ export default function UsersPage() {
                   {getStatusBadge(selectedUser.status)}
                 </div>
                 <div className="flex items-center gap-2 mb-3">
-                  {getAccountTypeBadge(selectedUser.accountType)}
                   {getRoleBadge(selectedUser.role)}
                 </div>
                 <p className="text-sm text-neutral-500">
@@ -369,49 +306,32 @@ export default function UsersPage() {
               <div className="space-y-4">
                 <h3 className="font-semibold text-neutral-800 flex items-center gap-2">
                   <div className="w-1 h-5 bg-warning-500 rounded-full" />
-                  账号与角色权限
+                  角色权限
                 </h3>
-                <div className="card p-4 bg-neutral-50 space-y-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      {selectedUser.accountType === 'admin' ? (
-                        <ShieldCheck className="w-4 h-4 text-primary-500" />
-                      ) : (
-                        <UserIcon className="w-4 h-4 text-success-500" />
-                      )}
-                      <span className="text-sm font-medium text-neutral-800">
-                        {ACCOUNT_TYPES[selectedUser.accountType].label}
-                      </span>
-                    </div>
-                    <p className="text-xs text-neutral-500">
-                      {ACCOUNT_TYPES[selectedUser.accountType].description}
-                    </p>
+                <div className="card p-4 bg-neutral-50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shield className="w-5 h-5 text-primary-500" />
+                    <span className="font-medium text-neutral-800">
+                      {ROLES[selectedUser.role].label}
+                    </span>
                   </div>
-                  <div className="border-t border-neutral-200 pt-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Shield className="w-4 h-4 text-primary-500" />
-                      <span className="text-sm font-medium text-neutral-800">
-                        {ROLES[selectedUser.role].label}
+                  <p className="text-sm text-neutral-500 mb-3">
+                    {ROLES[selectedUser.role].description}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ROLES[selectedUser.role].permissions.slice(0, 8).map((perm) => (
+                      <span
+                        key={perm}
+                        className="px-2 py-0.5 bg-primary-100 text-primary-700 text-xs rounded"
+                      >
+                        {perm}
                       </span>
-                    </div>
-                    <p className="text-xs text-neutral-500 mb-2">
-                      {ROLES[selectedUser.role].description}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {ROLES[selectedUser.role].permissions.slice(0, 8).map((perm) => (
-                        <span
-                          key={perm}
-                          className="px-2 py-0.5 bg-primary-100 text-primary-700 text-xs rounded"
-                        >
-                          {perm}
-                        </span>
-                      ))}
-                      {ROLES[selectedUser.role].permissions.length > 8 && (
-                        <span className="px-2 py-0.5 bg-neutral-100 text-neutral-600 text-xs rounded">
-                          +{ROLES[selectedUser.role].permissions.length - 8}项
-                        </span>
-                      )}
-                    </div>
+                    ))}
+                    {ROLES[selectedUser.role].permissions.length > 8 && (
+                      <span className="px-2 py-0.5 bg-neutral-100 text-neutral-600 text-xs rounded">
+                        +{ROLES[selectedUser.role].permissions.length - 8}项
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
