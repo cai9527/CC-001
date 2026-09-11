@@ -6,10 +6,12 @@ import { mockTasks, mockVehicles } from '@/services/mock/data';
 const TICK_MS = 2000;
 /** 模拟时间倍率：让每个上报周期内的位移在地图上可见 */
 const SIM_TIME_SCALE = 15;
+/** 每个上报周期对应的模拟时长（30 秒） */
+const SIM_TICK_MS = TICK_MS * SIM_TIME_SCALE;
+/** 初始历史轨迹覆盖时长：8 小时 */
+const HISTORY_SPAN_MS = 8 * 60 * 60 * 1000;
 /** 每辆车保留的最大轨迹点数 */
-const MAX_TRAIL_POINTS = 300;
-/** 初始化时生成的历史轨迹点数 */
-const HISTORY_POINTS = 60;
+const MAX_TRAIL_POINTS = 2000;
 /** 公司停车场（无定位车辆默认位置） */
 const DEPOT = { lat: 39.8742, lng: 116.3974, address: '公司停车场' };
 
@@ -29,6 +31,8 @@ interface SimState {
 /** 车辆内部模拟状态（不进 store） */
 const simStates = new Map<string, SimState>();
 let timer: ReturnType<typeof setInterval> | null = null;
+/** 模拟时钟：轨迹点时间戳与位置推进保持一致 */
+let simClock = Date.now();
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
@@ -66,21 +70,18 @@ const appendPoint = (trail: TrackPoint[], point: TrackPoint): TrackPoint[] => {
   return next.length > MAX_TRAIL_POINTS ? next.slice(next.length - MAX_TRAIL_POINTS) : next;
 };
 
-/** 推进一辆车的模拟状态，返回新的跟踪数据 */
-const tickVehicle = (tv: TrackedVehicle, sim: SimState, now: Date): TrackedVehicle => {
-  if (tv.status !== 'active' || !tv.route) return tv;
-
+/** 推进一个模拟步，返回新的轨迹点（含端点停留、速度随机游走、往返行驶） */
+const nextPoint = (route: Route, sim: SimState, prev: TrackPoint, timestamp: string): TrackPoint => {
   // 端点装卸货停留中
   if (sim.pauseTicks > 0) {
     sim.pauseTicks -= 1;
-    const point: TrackPoint = { ...tv.position, speed: 0, timestamp: now.toISOString() };
-    return { ...tv, position: point, trail: appendPoint(tv.trail, point) };
+    return { ...prev, speed: 0, timestamp };
   }
 
   // 速度随机游走
   sim.speed = clamp(sim.speed + (Math.random() - 0.5) * 10, 22, 65);
-  // 按速度推进路线进度：km/h × h = km，除以路线里程（乘模拟时间倍率）
-  sim.progress += ((sim.speed * (TICK_MS / 3600000) * SIM_TIME_SCALE) / tv.route.distance) * sim.direction;
+  // 按速度推进路线进度：km/h × h = km，除以路线里程
+  sim.progress += ((sim.speed * (SIM_TICK_MS / 3600000)) / route.distance) * sim.direction;
 
   if (sim.progress >= 1) {
     sim.progress = 1;
@@ -92,65 +93,55 @@ const tickVehicle = (tv: TrackedVehicle, sim: SimState, now: Date): TrackedVehic
     sim.pauseTicks = 2 + Math.floor(Math.random() * 4);
   }
 
-  const pos = pointOnRoute(tv.route, sim.progress, sim.curvePhase);
-  const point: TrackPoint = {
+  const pos = pointOnRoute(route, sim.progress, sim.curvePhase);
+  return {
     ...pos,
     speed: Math.round(sim.speed),
-    heading: calcHeading(tv.position, pos),
-    timestamp: now.toISOString(),
+    heading: calcHeading(prev, pos),
+    timestamp,
   };
-  return { ...tv, position: point, trail: appendPoint(tv.trail, point) };
 };
 
-/** 生成车辆初始历史轨迹（沿路线回溯一段行程） */
-const buildInitialTrail = (
-  route: Route,
-  endProgress: number,
-  curvePhase: number,
-  now: Date
-): TrackPoint[] => {
+/** 生成过去 8 小时的历史轨迹（与实时模拟同一套移动逻辑，含往返与停留） */
+const buildInitialTrail = (route: Route, sim: SimState, endTime: number): TrackPoint[] => {
+  const startTime = endTime - HISTORY_SPAN_MS;
   const points: TrackPoint[] = [];
-  const step = 0.004; // 每个历史点的进度间隔
-  const startProgress = Math.max(0.02, endProgress - HISTORY_POINTS * step);
-  let prev = pointOnRoute(route, startProgress, curvePhase);
-  for (let i = 0; i <= HISTORY_POINTS; i++) {
-    const progress = startProgress + (endProgress - startProgress) * (i / HISTORY_POINTS);
-    const pos = pointOnRoute(route, progress, curvePhase);
-    points.push({
-      ...pos,
-      speed: 30 + Math.round(Math.random() * 25),
-      heading: calcHeading(prev, pos),
-      timestamp: new Date(now.getTime() - (HISTORY_POINTS - i) * TICK_MS * 3).toISOString(),
-    });
-    prev = pos;
+  let prev: TrackPoint = {
+    ...pointOnRoute(route, sim.progress, sim.curvePhase),
+    speed: Math.round(sim.speed),
+    heading: 0,
+    timestamp: new Date(startTime).toISOString(),
+  };
+  points.push(prev);
+  for (let t = startTime + SIM_TICK_MS; t <= endTime; t += SIM_TICK_MS) {
+    prev = nextPoint(route, sim, prev, new Date(t).toISOString());
+    points.push(prev);
   }
   return points;
 };
 
 /** 从 Mock 车辆与任务构建初始跟踪数据 */
 const buildTrackedVehicles = (): TrackedVehicle[] => {
-  const now = new Date();
+  const now = simClock;
   return mockVehicles.map((vehicle, index) => {
     const taskInfo = findVehicleTask(vehicle.id);
 
     if (vehicle.status === 'active' && taskInfo) {
-      const curvePhase = index * 1.7 + 0.8;
-      const progress = 0.25 + ((index * 0.13) % 0.6);
-      const trail = buildInitialTrail(taskInfo.route, progress, curvePhase, now);
-      const position = trail[trail.length - 1];
-      simStates.set(vehicle.id, {
-        progress,
-        direction: 1,
+      const sim: SimState = {
+        progress: 0.05 + ((index * 0.17) % 0.9),
+        direction: index % 2 === 0 ? 1 : -1,
         pauseTicks: 0,
         speed: vehicle.currentSpeed ?? 45,
-        curvePhase,
-      });
+        curvePhase: index * 1.7 + 0.8,
+      };
+      const trail = buildInitialTrail(taskInfo.route, sim, now);
+      simStates.set(vehicle.id, sim);
       return {
         vehicleId: vehicle.id,
         plateNumber: vehicle.plateNumber,
         driverName: vehicle.driverName,
         status: vehicle.status,
-        position,
+        position: trail[trail.length - 1],
         trail,
         taskId: taskInfo.taskId,
         route: taskInfo.route,
@@ -163,7 +154,7 @@ const buildTrackedVehicles = (): TrackedVehicle[] => {
       lng: (vehicle.currentLocation?.lng ?? DEPOT.lng) + (taskInfo ? 0 : index * 0.0015),
       speed: 0,
       heading: 0,
-      timestamp: now.toISOString(),
+      timestamp: new Date(now).toISOString(),
     };
     return {
       vehicleId: vehicle.id,
@@ -178,11 +169,30 @@ const buildTrackedVehicles = (): TrackedVehicle[] => {
   });
 };
 
+/** 轨迹查询时间段 */
+export interface TimeRange {
+  /** 开始时间（ISO 或 datetime-local 值） */
+  start: string;
+  /** 结束时间（ISO 或 datetime-local 值） */
+  end: string;
+}
+
+/** 按时间段过滤轨迹点，range 为 null 时返回完整轨迹 */
+export const filterTrailByTime = (trail: TrackPoint[], range: TimeRange | null): TrackPoint[] => {
+  if (!range) return trail;
+  const startMs = new Date(range.start).getTime();
+  const endMs = new Date(range.end).getTime();
+  return trail.filter((p) => {
+    const t = new Date(p.timestamp).getTime();
+    return t >= startMs && t <= endMs;
+  });
+};
+
 interface PlaybackState {
   /** 是否处于回放模式 */
   active: boolean;
   playing: boolean;
-  /** 当前回放到的轨迹点下标 */
+  /** 当前回放到的轨迹点下标（基于过滤后的轨迹） */
   index: number;
   /** 回放倍速 */
   speed: 1 | 2 | 4;
@@ -196,11 +206,14 @@ interface TrackingState {
   /** 实时模拟是否运行中 */
   isLive: boolean;
   lastUpdate: string;
+  /** 轨迹查询时间段，null 表示全部 */
+  timeRange: TimeRange | null;
   playback: PlaybackState;
   startLive: () => void;
   stopLive: () => void;
   selectVehicle: (id: string | null) => void;
   setFollowSelected: (follow: boolean) => void;
+  setTimeRange: (range: TimeRange | null) => void;
   startPlayback: () => void;
   stopPlayback: () => void;
   togglePlayback: () => void;
@@ -213,31 +226,38 @@ export const useTrackingStore = create<TrackingState>((set, get) => ({
   selectedVehicleId: null,
   followSelected: true,
   isLive: false,
-  lastUpdate: new Date().toISOString(),
+  lastUpdate: new Date(simClock).toISOString(),
+  timeRange: null,
   playback: { active: false, playing: false, index: 0, speed: 1 },
 
   startLive: () => {
     if (timer) return;
     set({ isLive: true });
     timer = setInterval(() => {
+      simClock += SIM_TICK_MS;
+      const timestamp = new Date(simClock).toISOString();
       const state = get();
-      const now = new Date();
       const vehicles = state.vehicles.map((tv) => {
         const sim = simStates.get(tv.vehicleId);
-        return sim ? tickVehicle(tv, sim, now) : tv;
+        if (!sim || tv.status !== 'active' || !tv.route) return tv;
+        const point = nextPoint(tv.route, sim, tv.position, timestamp);
+        return { ...tv, position: point, trail: appendPoint(tv.trail, point) };
       });
 
       let playback = state.playback;
       if (playback.active && playback.playing) {
         const selected = vehicles.find((v) => v.vehicleId === state.selectedVehicleId);
-        if (selected && selected.trail.length > 1) {
-          const maxIndex = selected.trail.length - 1;
-          const next = playback.index + playback.speed;
-          // 播放到最新位置后回到起点循环播放
-          playback = { ...playback, index: next > maxIndex ? 0 : next };
+        if (selected) {
+          const filtered = filterTrailByTime(selected.trail, state.timeRange);
+          if (filtered.length > 1) {
+            const maxIndex = filtered.length - 1;
+            const next = playback.index + playback.speed;
+            // 播放到最新位置后回到起点循环播放
+            playback = { ...playback, index: next > maxIndex ? 0 : next };
+          }
         }
       }
-      set({ vehicles, playback, lastUpdate: now.toISOString() });
+      set({ vehicles, playback, lastUpdate: timestamp });
     }, TICK_MS);
   },
 
@@ -253,16 +273,26 @@ export const useTrackingStore = create<TrackingState>((set, get) => ({
     set((state) => ({
       selectedVehicleId: id,
       followSelected: true,
+      timeRange: null,
       playback: { ...state.playback, active: false, playing: false, index: 0 },
     }));
   },
 
   setFollowSelected: (follow) => set({ followSelected: follow }),
 
+  setTimeRange: (range) => {
+    set((state) => ({
+      timeRange: range,
+      // 时间段变化后轨迹集合改变，回放进度重置
+      playback: { ...state.playback, index: 0, playing: false },
+    }));
+  },
+
   startPlayback: () => {
-    const { selectedVehicleId, vehicles } = get();
+    const { selectedVehicleId, vehicles, timeRange } = get();
     const selected = vehicles.find((v) => v.vehicleId === selectedVehicleId);
-    if (!selected || selected.trail.length < 2) return;
+    if (!selected) return;
+    if (filterTrailByTime(selected.trail, timeRange).length < 2) return;
     set((state) => ({
       playback: { ...state.playback, active: true, playing: true, index: 0 },
     }));

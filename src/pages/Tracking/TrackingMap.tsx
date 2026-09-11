@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus, Minus, Maximize2, Crosshair } from 'lucide-react';
-import { pointOnRoute, useTrackingStore } from '@/store/useTrackingStore';
+import { filterTrailByTime, pointOnRoute, useTrackingStore } from '@/store/useTrackingStore';
 import { VEHICLE_STATUS } from '@/types';
 import type { TrackPoint, TrackedVehicle } from '@/types';
 import { classNames } from '@/utils';
