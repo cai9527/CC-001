@@ -13,6 +13,33 @@ export interface Route {
   estimatedTime: number;
 }
 
+/** 车辆轨迹点（实时定位/历史轨迹） */
+export interface TrackPoint {
+  lat: number;
+  lng: number;
+  /** 瞬时速度 km/h */
+  speed: number;
+  /** 航向角，0-360，正北为 0 */
+  heading: number;
+  timestamp: string;
+}
+
+/** 实时跟踪车辆状态 */
+export interface TrackedVehicle {
+  vehicleId: string;
+  plateNumber: string;
+  driverName?: string;
+  status: Vehicle['status'];
+  /** 当前位置 */
+  position: TrackPoint;
+  /** 历史轨迹（按时间升序） */
+  trail: TrackPoint[];
+  /** 当前执行中的任务ID */
+  taskId?: string;
+  /** 当前任务规划路线 */
+  route?: Route;
+}
+
 export interface VehicleDocument {
   id: string;
   type: string;
